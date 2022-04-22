@@ -32,7 +32,7 @@ def handle_client (conn,addr):
             conn.send(send_data.encode(FORMAT))
             
             
-            
+            #change to specify filename 
         elif cmd == "CREATE":
             send_data += "Creating file. \n"
             conn.send(send_data.encode(FORMAT))
@@ -44,7 +44,7 @@ def handle_client (conn,addr):
             print("The file does not exist")
             
             
-            
+            #abs path
             print(f"{addr} disconnected")
             conn.close()
         
@@ -77,7 +77,7 @@ def handle_client (conn,addr):
             
             
             
-            
+            #change to not need absolute path 
         elif cmd == "DELETE":
             files = os.listdir(SERVER_PATH)
             send_data = "OK@"
@@ -97,7 +97,7 @@ def handle_client (conn,addr):
             
             
             
-            
+            #
         elif cmd == "DOWNLOAD":
             path1 = data[1]
            
