@@ -1,70 +1,90 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-
-# Author : Ayesha S. Dina
-
 import os
 import socket
-import threading
-
-# IP =  "192.168.1.101" #"localhost"
+from time import sleep
+from time import time
 IP = "localhost"
-PORT = 4455
+PORT = 4451
 ADDR = (IP,PORT)
-SIZE = 1024
+SIZE = 1024 ## byte .. buffer size
 FORMAT = "utf-8"
-SERVER_PATH = "server"
-
-### to handle the clients
-def handle_client (conn,addr):
-
-
-    print(f"[NEW CONNECTION] {addr} connected.")
-    conn.send("OK@Welcome to the server".encode(FORMAT))
-
-    while True:
-        data =  conn.recv(SIZE).decode(FORMAT)
-        data = data.split("@")
+SERVER_DATA_PATH = "server_data"
+def main():
+    
+    client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    client.connect(ADDR)
+    while True:  ### multiple communications
+        data = client.recv(SIZE).decode(FORMAT)
+        cmd, msg = data.split("@")
+        
+        if cmd == "OK":
+            print(f"{msg}")
+        elif cmd == "DISCONNECTED":
+            print(f"{msg}")
+            break
+        
+        data = input("> ") 
+        data = data.split(" ")
         cmd = data[0]
-       
-        send_data = "OK@"
-
-        if cmd == "LOGOUT":
+        
+        if cmd == "TASK":
+            client.send(cmd.encode(FORMAT))
+        elif cmd == "LOGOUT":
+            client.send(cmd.encode(FORMAT))
             break
 
-        elif cmd == "TASK": 
-            send_data += "LOGOUT from the server.\n"
-
-            conn.send(send_data.encode(FORMAT))
-        
         elif cmd == "CREATE":
-            path = "D:\Austin\School\CS371"
-            fileName = 'Simple-text-file.txt'
-            buff = "ABCD \n"
-            with open(os.path.join(path,fileName), 'w') as temp_file: ##### creating the file
-                temp_file.write(buff)
-            #temp_file.close()
-            send_data += "File created successfully.\n"
-            conn.send(send_data.encode(FORMAT))
+            client.send(cmd.encode(FORMAT))
+            
+            
+        #> UPLOAD /Users/jasmineparsons/filename
+        elif cmd == "UPLOAD":
+            
+            path1 = data[1]
+           
+            with open(f"{path1}", "r") as f:
+                text = f.read()
+            filename = path1.split("/")[-1]
+            send_data = f"{cmd}@{filename}@{text}"
+            client.send(send_data.encode(FORMAT))
+        
+        elif cmd == "LIST":
+            #redo format to add size, upload date and time, number of downloads
+            client.send(cmd.encode(FORMAT))
+            
+            
+        elif cmd == "DELETE":
+            client.send(f"{cmd}@{data[1]}".encode(FORMAT))
+            
+            
+        elif cmd == "DOWNLOAD":
+            filename = data[1]
+            send_data = f"{cmd}@{filename}"
+            client.send(send_data.encode(FORMAT))
+            data =  client.recv(SIZE).decode(FORMAT)
+            data = data.split("@")
+            filename = data[0]
+            text = data[1]
+            
+            filepath = os.path.join(SERVER_DATA_PATH, filename)
+        
+            with open(filepath, "w") as f:
+                f.write(text)
+            f.close()
+            data = input("> ") 
+            data = data.split(" ")
+            cmd = data[0]
+            
+            
 
+            
+            
+            
+                    
+            
+        
 
-    print(f"{addr} disconnected")
-    conn.close()
-
-
-def main():
-    print("Starting the server")
-    server = socket.socket(socket.AF_INET,socket.SOCK_STREAM) ## used IPV4 and TCP connection
-    server.bind(ADDR) # bind the address
-    server.listen() ## start listening
-    print(f"server is listening on {IP}: {PORT}")
-    while True:
-        conn, addr = server.accept() ### accept a connection from a client
-        thread = threading.Thread(target = handle_client, args = (conn, addr)) ## assigning a thread for each client
-        thread.start()
-
+    print("Disconnected from the server.")
+    client.close() ## close the connection
 
 if __name__ == "__main__":
     main()
-
