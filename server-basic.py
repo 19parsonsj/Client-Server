@@ -3,32 +3,64 @@ import socket
 import threading
 import ftplib
 import tkinter as tk
+import hashlib
+from time import time 
 from tkinter import *
 from tkinter import filedialog
 # IP =  "192.168.1.101" #"localhost"
 IP = "localhost"
-PORT = 4451
+PORT = 4450
 ADDR = (IP,PORT)
 SIZE = 1024
 FORMAT = "utf-8"
-SERVER_PATH = "server"
+SERVER_PATH = "server_data"
 ### to handle the clients
 def handle_client (conn,addr):
 
     print(f"[NEW CONNECTION] {addr} connected.")
-    conn.send("OK@Welcome to the server".encode(FORMAT))
+    
     #double array for each file date time 
+    #fileTable = {'Filename'}
+    uploadTable ={}
+   
+    HashTable = {'19parsonsj': 'Potus123'}
+    conn.send(str.encode('ENTER USERNAME : ')) # Request Username
+    name = conn.recv(2048)
+    conn.send(str.encode('ENTER PASSWORD : ')) # Request Password
+    password = conn.recv(2048)
+    password = password.decode()
+    name = name.decode()
+    if(HashTable[name] == password):
+        conn.send(str.encode('Connection Successful')) # Response Code for Connected Client 
+        print('Connected : ',name)
+    else:
+        conn.send(str.encode('Login Failed')) # Response code for login failed
+        print('Connection denied : ',name)
+    conn.send('OK@Welcome to the server\n'.encode(FORMAT))
+    
     
     while True:
         data =  conn.recv(SIZE).decode(FORMAT)
         data = data.split("@")
+        #if len(data) == 1:
         cmd = data[0]
-       
-        send_data = "OK@"
+       # else:
+           # cmd = data[0]
+           # msg = data[1]
+        
+
+        
         if cmd == "LOGOUT":
             break
+        
         elif cmd == "TASK": 
+            send_data = "OK@"
             send_data += "LOGOUT from the server.\n"
+            send_data += "LIST: List all the files from the server.\n"
+            send_data += "UPLOAD <path>: Upload a file to the server.\n"
+            send_data += "DELETE <filename>: Delete a file from the server.\n"
+            send_data += "LOGOUT: Disconnect from the server.\n"
+            send_data += "TASK: List all the commands."
             conn.send(send_data.encode(FORMAT))
             
             
@@ -36,19 +68,19 @@ def handle_client (conn,addr):
         elif cmd == "CREATE":
             send_data += "Creating file. \n"
             conn.send(send_data.encode(FORMAT))
-            path = '/Users/jasmineparsons'
-            fileName = 'Simple-text-file.txt'
-            buff = "ABCD \n"
-            with open(os.path.join(path,fileName), 'w') as temp_file: ##### creating the file
+        
+            buff = ""
+            with open(os.path.join(SERVER_PATH,fileName), 'w') as temp_file: ##### creating the file
                 temp_file.write(buff)
             print("The file does not exist")
             
-            
+        
             #abs path
             print(f"{addr} disconnected")
             conn.close()
         
         elif cmd == "UPLOAD":
+            ms = str(time() * 1000)
             #add gui to choose 
             name, text = data[1], data[2]
             
@@ -59,12 +91,20 @@ def handle_client (conn,addr):
 
             send_data = "OK@File uploaded successfully."
             
+            #add time date to array 
             conn.send(send_data.encode(FORMAT))
-            os.close(f.fileno())
+            print("sent data")
+            send_data = ms
+            conn.send(ms.encode(FORMAT))
+            print("sent ms")
+            #os.close(f.fileno())
+            #recv speed
+            #add to array
             
             
             
         elif cmd == "LIST":
+            print("in list")
             files = os.listdir(SERVER_PATH)
             send_data = "OK@"
 
@@ -72,7 +112,7 @@ def handle_client (conn,addr):
                 send_data += "The server directory is empty"
             else:
                 send_data += "\n".join(f for f in files)
-                
+    
             conn.send(send_data.encode(FORMAT))
             
             
@@ -97,20 +137,21 @@ def handle_client (conn,addr):
             
             
             
-            #
+            # 
         elif cmd == "DOWNLOAD":
-            path1 = data[1]
+            name = data[1]
+            filepath = os.path.join(SERVER_PATH, name)
            
-            with open(f"{path1}", "r") as f:
+            with open(f"{filepath}", "r") as f:
                 text = f.read()
-            filename = path1.split("/")[-1]
-            send_data = f"{filename}@{text}"
+            
+            send_data = f"{name}@{text}"
             conn.send(send_data.encode(FORMAT))
-            
+           
+            send_data = "Download Complete"
+            conn.send(send_data.encode(FORMAT))
                 
-            
-            
-            
+    
             
      
     print(f"{addr} disconnected")
