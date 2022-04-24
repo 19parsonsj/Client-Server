@@ -58,33 +58,42 @@ def main():
             
         #> UPLOAD /Users/jasmineparsons/filename
         elif cmd == "UPLOAD":
-            
-            
+            #path = given filepath
             path1 = data[1]
-           
+           #open and read text 
             with open(f"{path1}", "r") as f:
                 text = f.read()
+            #cmd, filename to upload, and all of its text
             filename = path1.split("/")[-1]
             send_data = f"{cmd}@{filename}@{text}"
+            #start timer for speed calculation
             start = float(time() * 1000)
-            
+            #turn send_data into bytes
             buff = bytes(send_data.encode(FORMAT))
             num_bytes = len(buff)
+            #send info to client to upload file
             client.send(buff)
+            #recieve response about status
             client.recv(SIZE).decode(FORMAT)
+            
             print("uploaded")
+            #recieve time value when upload was called 
             data = client.recv(SIZE)
             print("recv data")
+            #decode from byte
             s_ms = data.decode('utf8')
-       
             stop = float(s_ms)
-          
+            #calculation for time passed
             u_time = stop-start
             print(u_time)
-            rate = float(num_bytes/u_time)
+            #upload speed rate
+            rate = int(num_bytes/u_time)
             print(rate)
-
+        
+        
+            #add new rate to uploadSpeed.txt
             name = "uploadSpeed.txt"
+        
             filepath = os.path.join(CLIENT_PATH, name)
             
             with open(f"{filepath}", "a") as f:
@@ -93,12 +102,35 @@ def main():
         
               
             f.close()
+            #making the plot
+            content_list = []
+            #open uploadSpeed and turn each line into an int and append to list
             with open(f"{filepath}", "r") as f:
-                content_list = [line.rstrip() for line in f]
-                data = tuple(content_list)
+                for line in f:
+                    value = int(float(line.rstrip()))
+                    content_list.append(value)
+            #convert list into readble for plot 
+            data = np.array(content_list)
             
+           #plot data
             plt.plot(range(len(data)), data)
-            plt.show()
+            plt.savefig('/Users/jasmineparsons/Desktop/serverrun/client_data/UPLOADRATE.png')
+            
+            
+            #delete previous version and upload new version of uploadSpeed.txt
+            filename = 'uploadSpeed.txt'
+            
+            with open(f"{filepath}", "r") as f:
+                text = f.read()
+            
+        
+            send_data = f"{filename}@{text}"
+            buff = bytes(send_data.encode(FORMAT))
+            num_bytes = len(buff)
+            client.send(buff)
+            #plt.show()
+            #status for upload of uploadSpeed.txt
+            #client.recv(SIZE).decode(FORMAT)
         
             
             
