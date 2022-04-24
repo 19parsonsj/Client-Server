@@ -80,26 +80,69 @@ def handle_client (conn,addr):
             conn.close()
         
         elif cmd == "UPLOAD":
+            #timer for stop time of sending files
             ms = str(time() * 1000)
-            #add gui to choose 
+            #open path and write in file send
             name, text = data[1], data[2]
             
             filepath = os.path.join(SERVER_PATH, name)
         
             with open(filepath, "w") as f:
                 f.write(text)
-
-            send_data = "OK@File uploaded successfully."
             
-            #add time date to array 
+            #tell client uploaded successfully
+            send_data = "OK@File uploaded successfully."
             conn.send(send_data.encode(FORMAT))
             print("sent data")
+            #send back time for calculation
             send_data = ms
             conn.send(ms.encode(FORMAT))
             print("sent ms")
-            #os.close(f.fileno())
-            #recv speed
-            #add to array
+            
+            #delete previous version of uploadSpeed if available
+            data =  conn.recv(SIZE).decode(FORMAT)
+            data = data.split("@")
+            filename = data[0]
+            text = data[1]
+            print(filename)
+            print(text)
+            
+            send_data = "OK@"
+            filepath = os.path.join(SERVER_PATH, filename)
+          
+
+            try:
+                with open(filepath, "r+") as f:
+                    f.truncate(0)
+                    f.write(text)
+                print("file opened")
+            except IOError:
+                print("File not accessible")
+            finally:
+                f.close()
+                
+            
+                    
+
+            #conn.send(send_data.encode(FORMAT))
+            
+            content_list = []
+            with open(f"{filepath}", "r") as f:
+                for line in f:
+                    value = int(float(line.rstrip()))
+                    content_list.append(value)
+                
+            data = np.array(content_list)
+            
+            #y_ticks = np.arange(0, 1500, 50)
+            #plt.yticks(y_ticks)
+            plt.plot(range(len(data)), data)
+            plt.savefig('/Users/jasmineparsons/Desktop/serverrun/server_data/UPLOADRATE.png')
+  
+            #plt.show()
+            send_data = "OK@RESUMING"
+            
+            conn.send(send_data.encode(FORMAT))
             
             
             
