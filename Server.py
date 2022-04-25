@@ -64,7 +64,7 @@ def handle_client (conn,addr):
             with open(filepath, "w") as f:
                 f.write(text)
             
-            ######START OF MY CODE######
+            ######START OF AUSTIN'S CODE######
             
             #Get file size of file (in bytes)
             file_size = os.path.getsize(filepath)
@@ -80,14 +80,14 @@ def handle_client (conn,addr):
                 # <filename> xxxx_bytes date_time <number of downloads>
                 f.write(name + " " + file_size + "_bytes " + date_time + "0\n")
                 
-            #######END OF MY CODE########
+            #######END OF AUSTIN's CODE########
 
             send_data = "OK@File uploaded successfully."
             
             conn.send(send_data.encode(FORMAT))
             #os.close(f.fileno())
             
-            
+            ### ENTIRE LIST COMMAND IS BY AUSTIN ###
             
         elif cmd == "LIST":
             #files = os.listdir(SERVER_PATH)
@@ -103,9 +103,9 @@ def handle_client (conn,addr):
                     send_data += settingsData[i]    
                 conn.send(send_data.encode(FORMAT))
             
+            ### END OF LIST COMMAND ###
             
-            
-            
+        # Delete both the file and its entry into settings.txt
         elif cmd == "DELETE":
             files = os.listdir(SERVER_PATH)
             send_data = "OK@"
@@ -114,23 +114,32 @@ def handle_client (conn,addr):
             if len(files) == 0:
                 send_data += "The server directory is empty"
             else:
+                # If you can find the file to delete, start the deletion process
                 if filename in files:
+                    #Delete the file
                     os.system(f"del {SERVER_PATH}\{filename}")
                     send_data += "File deleted successfully."
                     
+                    ### START OF AUSTIN'S CODE ##
                     
+                    # Delete the entry in settings
                     with open(SETTINGS_PATH, "r") as settings:
+                        # Read all lines in settings.txt, and if the corresponding file to
+                        # delete is found, delete that line only
                         settingsData = settings.readlines()
                         for i in range(len(settingsData)):
                             #print(settingsData[i])
                             if filename in settingsData[i]:
                                 break
-                        print(i)
+                        #Delete only the ith line
                         settingsData.pop(i)
-                        
+                    
+                    # After popping the element from the list, remake the
+                    # text file.
                     try:
                         with open(SETTINGS_PATH, "r+") as f:
                             f.truncate(0)
+                            # Write in each of the remaining elements of the list
                             for i in range(len(settingsData)):
                                 f.write(settingsData[i])
                                 #print(settingsData[i])
@@ -140,10 +149,8 @@ def handle_client (conn,addr):
                     finally:
                         f.close()
 
-                    #Write the new line back into the file
-                    #with open(SETTINGS_PATH, "w") as f:
-                    #    f.writelines(settingsData)
-                    
+                    ### END OF AUSTIN's CODE                    
+
                 else:
                     send_data += "File not found."
 
@@ -156,7 +163,10 @@ def handle_client (conn,addr):
         elif cmd == "DOWNLOAD":
             path1 = data[1]
             
+            ### IMPORTANT: CHANGE THIS TO "/" FOR MAC ####
             filename = path1.split("\\")[-1]
+            
+            ### START OF AUSTIN'S CODE ###
             
             #Edit settings and increment number of downloads for filename
             #First search Settings.txt for a matching filename
@@ -164,16 +174,18 @@ def handle_client (conn,addr):
             with open(SETTINGS_PATH, "r") as settings:
                 settingsData = settings.readlines()
                 
+                #Find which line's download number to increment by comparing file names
                 for i in range(len(settingsData)):
                     #print(settingsData[i])
                     if settingsData[i].startswith(filename):
-                        print("in if")
+                        #print("in if")
                         break
-                print(i)
+                #print(i)
+                
                 #If we found the line, edit it and increment the downloads by 1.
-            
                 newLine = settingsData[i].split(" ")
                 #Number of downloads will always be the fourth "word" on every line
+                # (which translates to 3 in an array)
                 numDown = newLine[3]
                 numDown = int(numDown)
                 numDown += 1
@@ -182,10 +194,13 @@ def handle_client (conn,addr):
                 
                 lineToWrite = ""
                 
+                # Concatenate all four "words" into one string to replace the
+                # current line in the text file
                 for j in range(4):
                     lineToWrite += str(newLine[j])
                     lineToWrite += " "
                 
+                #Add a newline and replace the previous line with our lineToWrite
                 lineToWrite = lineToWrite + '\n'
                 settingsData[i] = lineToWrite
             
@@ -193,6 +208,7 @@ def handle_client (conn,addr):
             with open(SETTINGS_PATH, "w") as f:
                 f.writelines(settingsData)
                 
+                ### END OF AUSTIN'S CODE ###
            
             with open(f"{path1}", "r") as f:
                 text = f.read()
