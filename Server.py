@@ -23,23 +23,53 @@ SETTINGS_PATH = "D:\Austin\School\CS371\Project\ServerFile\Settings.txt"
 def handle_client (conn,addr):
 
     print(f"[NEW CONNECTION] {addr} connected.")
-    conn.send("OK@Welcome to the server".encode(FORMAT))
-    #double array for each file date time 
+    #ask client for user and password
+    #collection list of username and passwords
+    HashTable = {'19parsonsj': 'Potus123'}
+    conn.send(str.encode('ENTER USERNAME : ')) # Request Username
+    name = conn.recv(2048)
+    conn.send(str.encode('ENTER PASSWORD : ')) # Request Password
+    password = conn.recv(2048)
+    password = password.decode()
+    name = name.decode()
     
+    #check if user and pass are in the collection
+    if(HashTable[name] == password):
+        #connect if user and pass 
+        conn.send(str.encode('Connection Successful')) # Response Code for Connected Client 
+        print('Connected : ',name)
+    else:
+        #deny connection if user and pass does not exist
+        conn.send(str.encode('Login Failed')) # Response code for login failed
+        print('Connection denied : ',name)
+        
+        
+    conn.send("OK@Welcome to the server".encode(FORMAT))
+    
+    #while loop for command line
     while True:
         data =  conn.recv(SIZE).decode(FORMAT)
         data = data.split("@")
         cmd = data[0]
        
         send_data = "OK@"
+        
+        #logout command breaks while loop and closes connection
         if cmd == "LOGOUT":
             break
+            
+        #lists possible commands 
         elif cmd == "TASK": 
+            send_data = "OK@"
             send_data += "LOGOUT from the server.\n"
+            send_data += "LIST: List all the files from the server.\n"
+            send_data += "UPLOAD <path>: Upload a file to the server.\n"
+            send_data += "DELETE <filename>: Delete a file from the server.\n"
+            send_data += "LOGOUT: Disconnect from the server.\n"
+            send_data += "TASK: List all the commands."
             conn.send(send_data.encode(FORMAT))
             
-            
-            
+        #create command handling
         elif cmd == "CREATE":
             send_data += "Creating file. \n"
             conn.send(send_data.encode(FORMAT))
@@ -52,21 +82,65 @@ def handle_client (conn,addr):
             
             
             
-            print(f"{addr} disconnected")
-            conn.close()
-        
         elif cmd == "UPLOAD":
-            #add gui to choose 
+            ######START OF JASMINE'S CODE######
             name, text = data[1], data[2]
             
             filepath = os.path.join(SERVER_PATH, name)
         
             with open(filepath, "w") as f:
                 f.write(text)
+                
+            #tell client uploaded successfully
+            send_data = "OK@File uploaded successfully."
+            conn.send(send_data.encode(FORMAT))
+            #print("sent data")
+            
+            #send back time for calculation
+            send_data = ms
+            conn.send(ms.encode(FORMAT))
+            #print("sent ms")
+            
+            #delete previous version of uploadSpeed if available
+            data =  conn.recv(SIZE).decode(FORMAT)
+            data = data.split("@")
+            filename = data[0]
+            text = data[1]
+            #print(filename)
+            #print(text)
+            
+            #rewrite new values to uploadSpeed
+            filepath = os.path.join(SERVER_PATH, filename)
+            
+            try:
+                with open(filepath, "r+") as f:
+                    f.truncate(0)
+                    f.write(text)
+                print("file opened")
+            except IOError:
+                print("File not accessible")
+            finally:
+                f.close()
+                
+            #convert lines in uploadSpeed to read to a plot
+            content_list = []
+            with open(f"{filepath}", "r") as f:
+                for line in f:
+                    value = int(float(line.rstrip()))
+                    content_list.append(value)
+                
+            data = np.array(content_list)
+            
+            #plot the uploadSpeed data
+            plt.plot(range(len(data)), data)
+            plt.savefig('/Users/jasmineparsons/Desktop/serverrun/server_data/UPLOADRATE.png')
+            #plt.show()
+            ######END OF JASMINE'S CODE######
             
             ######START OF AUSTIN'S CODE######
             
             #Get file size of file (in bytes)
+            filepath = os.path.join(SERVER_PATH, name)
             file_size = os.path.getsize(filepath)
             file_size = str(file_size)
             
@@ -87,6 +161,9 @@ def handle_client (conn,addr):
             conn.send(send_data.encode(FORMAT))
             #os.close(f.fileno())
             
+            
+            
+            
             ### ENTIRE LIST COMMAND IS BY AUSTIN ###
             
         elif cmd == "LIST":
@@ -104,6 +181,7 @@ def handle_client (conn,addr):
                 conn.send(send_data.encode(FORMAT))
             
             ### END OF LIST COMMAND ###
+            
             
         # Delete both the file and its entry into settings.txt
         elif cmd == "DELETE":
@@ -161,6 +239,7 @@ def handle_client (conn,addr):
             
             
         elif cmd == "DOWNLOAD":
+            
             path1 = data[1]
             
             ### IMPORTANT: CHANGE THIS TO "/" FOR MAC ####
@@ -209,15 +288,79 @@ def handle_client (conn,addr):
                 f.writelines(settingsData)
                 
                 ### END OF AUSTIN'S CODE ###
+                
+            ### START OF JASMINE'S CODE ###
            
             with open(f"{path1}", "r") as f:
                 text = f.read()
-            send_data = f"{filename}@{text}"
-            conn.send(send_data.encode(FORMAT))
-            send_data = "OK@resume"
-            conn.send(send_data.encode(FORMAT))
                 
+            send_data = f"{filename}@{text}"
+            #start timer for sending
+            start = float(time() * 1000)
+            buff = bytes(send_data.encode(FORMAT))
+            #calculate number of bytes
+            num_bytes = (os.path.getsize(filepath))
+            #send data
+            conn.send(buff)
+           
+            #receives stop time from client
+            data = conn.recv(SIZE)
+            #print("recv data")
+            #decode
+            s_ms = data.decode('utf8')
+            stop = float(s_ms)
+            #difference in time
+            u_time = abs(stop-start)
+            #print(u_time)
             
+            #calculate the rate MB/s
+            rate = (int(num_bytes/u_time) / 100000 * 1000)
+           
+            #open downloadSpeed.txt and add new rate
+            name = "downloadSpeed.txt"
+        
+            filepath = os.path.join(SERVER_PATH, name)
+            
+            with open(f"{filepath}", "a") as f:
+                add = str(rate) + '\n'
+                f.write(add)
+        
+              
+            f.close()
+            
+            #convert lines in file to read to a plot
+            content_list = []
+            with open(f"{filepath}", "r") as f:
+                for line in f:
+                    value = int(float(line.rstrip()))
+                    content_list.append(value)
+                
+            data = np.array(content_list)
+            
+            #plot the data
+            plt.clf()
+            plt.plot(range(len(data)), data)
+            plt.savefig('/Users/jasmineparsons/Desktop/serverrun/server_data/DOWNLOADRATE.png')
+            
+            
+            #delete previous version and upload new version of downloadSpeed.txt
+            filename = 'downloadSpeed.txt'
+            
+            with open(f"{filepath}", "r") as f:
+                text = f.read()
+            
+            #send new downloadSpeed.txt to client
+            send_data = f"{filename}@{text}"
+            buff = bytes(send_data.encode(FORMAT))
+            num_bytes = len(buff)
+            conn.send(buff)
+            #plt.show()
+            #status for upload of uploadSpeed.txt
+            #client.recv(SIZE).decode(FORMAT)
+            send_data = "OK@RESUMING"
+            
+            conn.send(send_data.encode(FORMAT))
+            ### END OF JASMINE'S CODE ###
             
             
             
