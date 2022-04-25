@@ -14,7 +14,15 @@ def main():
     client.connect(ADDR)
     while True:  ### multiple communications
         data = client.recv(SIZE).decode(FORMAT)
-        cmd, msg = data.split("@")
+        #cmd, msg = data.split("@")
+        
+        data = data.split("@")
+        if len(data) == 1:
+            cmd = data[0]
+        else:
+            cmd = data[0]
+            msg = data[1]
+
         
         if cmd == "OK":
             print(f"{msg}")

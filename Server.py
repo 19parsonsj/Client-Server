@@ -3,6 +3,7 @@ import socket
 import threading
 import ftplib
 import tkinter as tk
+import hashlib
 from datetime import datetime
 from tkinter import *
 from tkinter import filedialog
@@ -63,7 +64,7 @@ def handle_client (conn,addr):
             with open(filepath, "w") as f:
                 f.write(text)
             
-            #os.close(f.fileno())
+            ######START OF MY CODE######
             
             #Get file size of file (in bytes)
             file_size = os.path.getsize(filepath)
@@ -78,6 +79,8 @@ def handle_client (conn,addr):
                 #Each file has the following format:
                 # <filename> xxxx_bytes date_time <number of downloads>
                 f.write(name + " " + file_size + "_bytes " + date_time + "0\n")
+                
+            #######END OF MY CODE########
 
             send_data = "OK@File uploaded successfully."
             
@@ -87,15 +90,18 @@ def handle_client (conn,addr):
             
             
         elif cmd == "LIST":
-            files = os.listdir(SERVER_PATH)
+            #files = os.listdir(SERVER_PATH)
             send_data = "OK@"
 
-            if len(files) == 0:
+            with open(SETTINGS_PATH, "r") as settings:
+                settingsData = settings.readlines()
+                
+            if len(settingsData) == 0:
                 send_data += "The server directory is empty"
             else:
-                send_data += "\n".join(f for f in files)
-                
-            conn.send(send_data.encode(FORMAT))
+                for i in range(len(settingsData)):
+                    send_data += settingsData[i]    
+                conn.send(send_data.encode(FORMAT))
             
             
             
@@ -109,8 +115,35 @@ def handle_client (conn,addr):
                 send_data += "The server directory is empty"
             else:
                 if filename in files:
-                    os.system(f"rm {SERVER_PATH}/{filename}")
+                    os.system(f"del {SERVER_PATH}\{filename}")
                     send_data += "File deleted successfully."
+                    
+                    
+                    with open(SETTINGS_PATH, "r") as settings:
+                        settingsData = settings.readlines()
+                        for i in range(len(settingsData)):
+                            #print(settingsData[i])
+                            if filename in settingsData[i]:
+                                break
+                        print(i)
+                        settingsData.pop(i)
+                        
+                    try:
+                        with open(SETTINGS_PATH, "r+") as f:
+                            f.truncate(0)
+                            for i in range(len(settingsData)):
+                                f.write(settingsData[i])
+                                #print(settingsData[i])
+                        print("file opened")
+                    except IOError:
+                        print("File not accessible")
+                    finally:
+                        f.close()
+
+                    #Write the new line back into the file
+                    #with open(SETTINGS_PATH, "w") as f:
+                    #    f.writelines(settingsData)
+                    
                 else:
                     send_data += "File not found."
 
@@ -123,45 +156,50 @@ def handle_client (conn,addr):
         elif cmd == "DOWNLOAD":
             path1 = data[1]
             
-            filename = path1.split("/")[-1]
+            filename = path1.split("\\")[-1]
             
             #Edit settings and increment number of downloads for filename
             #First search Settings.txt for a matching filename
-            settings = open(SETTINGS_PATH, "r")
-            
-            i = 0
-            foundLine = 0
-            
-            for line in settings:
-                i += 1
-                if filename in line:
-                    foundLine = 1
-                    break
+            #settings = open(SETTINGS_PATH, "r")
+            with open(SETTINGS_PATH, "r") as settings:
+                settingsData = settings.readlines()
                 
-            #If we found the line, edit it and increment the downloads by 1.
-            if foundLine == 1:
-                data = settings.readlines()
-                newLine = data[i].split()
-                #Number of downloads will always be the fifth "word" on every line
-                numDown = newLine[4]
+                for i in range(len(settingsData)):
+                    #print(settingsData[i])
+                    if settingsData[i].startswith(filename):
+                        print("in if")
+                        break
+                print(i)
+                #If we found the line, edit it and increment the downloads by 1.
+            
+                newLine = settingsData[i].split(" ")
+                #Number of downloads will always be the fourth "word" on every line
+                numDown = newLine[3]
                 numDown = int(numDown)
                 numDown += 1
                 numDown = str(numDown)
-                newLine[4] = numDown
+                newLine[3] = numDown
                 
-            #Close the file
-            settings.close()
+                lineToWrite = ""
+                
+                for j in range(4):
+                    lineToWrite += str(newLine[j])
+                    lineToWrite += " "
+                
+                lineToWrite = lineToWrite + '\n'
+                settingsData[i] = lineToWrite
             
             #Write the new line back into the file
             with open(SETTINGS_PATH, "w") as f:
-                f.writelines(data)
+                f.writelines(settingsData)
                 
            
             with open(f"{path1}", "r") as f:
                 text = f.read()
             send_data = f"{filename}@{text}"
             conn.send(send_data.encode(FORMAT))
-            
+            send_data = "OK@resume"
+            conn.send(send_data.encode(FORMAT))
                 
             
             
